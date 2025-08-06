@@ -7,7 +7,7 @@ def send_email_with_report():
     receiver_email = "omkardmule@gmail.com"
     subject = "Automation Test Report"
     body = "Hi,\n\nPlease find the attached test report.\n\nRegards,\nAutomation Bot"
-    app_password = "your_app_password"  # 16-digit App Password from Gmail
+    app_password = "yydw wasv kmsz ttoi"  # 16-digit App Password from Gmail
 
     report_path = os.path.abspath("reports/report.html")
 

@@ -1,4 +1,5 @@
 import json
+import shutil
 from pathlib import Path
 import os
 import pytest
@@ -83,14 +84,34 @@ def pytest_runtest_makereport(item, call):
     outcome = yield
     rep = outcome.get_result()
     setattr(item, "rep_" + rep.when, rep)
+
     if rep.when == "call" and rep.failed:
         driver = item.funcargs.get("browserInstance")
         if driver:
-            screenshots = os.path.join(os.getcwd(), "screenshots")
-            os.makedirs(screenshots, exist_ok=True)
+            screenshots_dir = Path(__file__).resolve().parent / "screenshots"
+            os.makedirs(screenshots_dir, exist_ok=True)
+
+            # Create screenshot filename
             fname = f"{item.name}_{datetime.now():%Y-%m-%d_%H-%M-%S}.png"
-            path = os.path.join(screenshots, fname)
-            driver.save_screenshot(path)
-            extra = getattr(rep, "extra", [])
-            extra.append(pytest_html.extras.image(path))
-            rep.extra = extra
+            full_path = screenshots_dir / fname
+            driver.save_screenshot(str(full_path))
+
+            # Embed screenshot
+            plugin = item.config.pluginmanager.getplugin("html")
+            if plugin:
+                extra = getattr(rep, "extra", [])
+                extra.append(plugin.extras.image(str(full_path)))
+                rep.extra = extra
+
+@pytest.hookimpl(tryfirst=True)
+def pytest_sessionstart(session):
+    report_path = os.path.join(os.getcwd(), "reports", "report.html")
+    if os.path.exists(report_path):
+        os.remove(report_path)
+        print(f"🧹 Cleared previous report: {report_path}")
+
+def pytest_sessionstart(session):
+    screenshots_dir = Path(__file__).resolve().parent / "screenshots"
+    if screenshots_dir.exists() and screenshots_dir.is_dir():
+        shutil.rmtree(screenshots_dir)
+        print("🧹 Old screenshots deleted.")

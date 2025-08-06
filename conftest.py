@@ -1,71 +1,96 @@
+import json
 from pathlib import Path
-
+import os
 import pytest
 import pytest_html
-from selenium import webdriver
-import os
 from datetime import datetime
-
-
+from selenium import webdriver
 from selenium.webdriver.edge.service import Service
 
+from E2E.pageObjects.login_page import LoginPage
+from E2E.pageObjects.logout_page import LogoutPage
+from E2E.utils.browserutils import BrowserUtils
 
-# Add browser selection from command line
+
 def pytest_addoption(parser):
     parser.addoption(
         "--browser_name",
         action="store",
         default="chrome",
-        help="Type in browser name: chrome or edge"
+        choices=["chrome", "firefox", "edge"],
+        help="Type browser name: chrome, firefox, or edge",
     )
+@pytest.fixture(scope="session")
+def credentials():
+    path = Path(__file__).resolve().parent / "E2E" / "testdata" / "test_e2eTestFramework.json"
+    print(f"Loading credentials from: {path}")
+
+    if not path.exists():
+        raise FileNotFoundError(f"test_e2eTestFramework.json not found at: {path}")
+
+    with open(path) as f:
+        return json.load(f)
 
 
-# WebDriver fixture
-@pytest.fixture(scope="function")
-def browserInstance(request):
-    browser_name = request.config.getoption("browser_name")
-    driver = None
-
-    if browser_name == "chrome":
+@pytest.fixture(scope="session")
+def browserInstance(request,credentials):
+    name = request.config.getoption("browser_name")
+    if name == "chrome":
         driver = webdriver.Chrome()
 
-    elif browser_name == "firefox":
+    elif name == "firefox":
         driver = webdriver.Firefox()
 
-    elif browser_name == "edge":
-        # Use pathlib for OS-safe path handling
-        driver_path = Path("C:/Users/dell/PycharmProjects/Automation/drivers/msedgedriver.exe")
-
-        print("Driver exists:", driver_path.exists())
-
-        if not driver_path.is_file():
-            raise FileNotFoundError(f"Edge driver not found at: {driver_path}")
-
-        service = Service(driver_path)
+    elif name == "edge":
+        root = Path(__file__).resolve().parent  # project root: Automation
+        drv = root / "E2E" / "driver" / "msedgedriver.exe"
+        print("Looking for EdgeDriver at:", drv)
+        if not drv.is_file():
+            raise FileNotFoundError(f"EdgeDriver not found at {drv}")
+        service = Service(drv)
         driver = webdriver.Edge(service=service)
 
-    else:
-        raise ValueError(f"Unsupported browser: {browser_name}")
+    driver.maximize_window()
 
-    driver.implicitly_wait(10)
+    driver.implicitly_wait(30)
+
+    user = credentials["data"][2]  # Extract first user's data
+
+    driver.get(user["url"])
+    login_page = LoginPage(driver)
+    login_page.login(user["username_input"], user["password_input"])
+
+
+
+
+
     yield driver
-    driver.quit()  # Ensures proper cleanup # safer than driver.close()
+    try:
+        logout_page = LogoutPage(browserInstance)
+        logout_page.logout()
+        print("✅ Logout successful")
+    except Exception as e:
+        print(f"⚠️ Logout failed: {e}")
 
-# Hook to capture test result
+    try:
+        browserInstance.quit()
+        print(" Browser closed")
+    except Exception as e:
+        print(f"⚠️ Browser quit failed: {e}")
+
 @pytest.hookimpl(hookwrapper=True)
 def pytest_runtest_makereport(item, call):
     outcome = yield
     rep = outcome.get_result()
     setattr(item, "rep_" + rep.when, rep)
-
     if rep.when == "call" and rep.failed:
         driver = item.funcargs.get("browserInstance")
         if driver:
-            screenshot_dir = os.path.join(os.getcwd(), "screenshots")
-            os.makedirs(screenshot_dir, exist_ok=True)
-            screenshot_path = os.path.join(screenshot_dir, f"{item.name}_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.png")
-            driver.save_screenshot(screenshot_path)
-            if screenshot_path:
-                extra = getattr(rep, "extra", [])
-                extra.append(pytest_html.extras.image(screenshot_path))
-                rep.extra = extra
+            screenshots = os.path.join(os.getcwd(), "screenshots")
+            os.makedirs(screenshots, exist_ok=True)
+            fname = f"{item.name}_{datetime.now():%Y-%m-%d_%H-%M-%S}.png"
+            path = os.path.join(screenshots, fname)
+            driver.save_screenshot(path)
+            extra = getattr(rep, "extra", [])
+            extra.append(pytest_html.extras.image(path))
+            rep.extra = extra

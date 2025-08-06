@@ -1,0 +1,32 @@
+{"data": [
+
+  {  "url": "https://rahulshettyacademy.com/loginpagePractise/",
+    "username_input": "rahulshettyacademy",
+    "password_input": "learning"
+  },
+  {  "url": "https://rahulshettyacademy.com/loginpagePractise/",
+    "username_input": "omkardattatray",
+    "password_input": "learning"
+  },
+  { "url": "https://opensource-demo.orangehrmlive.com/web/index.php/auth/login",
+    "username_input": "Admin",
+    "password_input": "admin123"
+  },
+
+  { "url": "https://opensource-demo.orangehrmlive.com/web/index.php/auth/login",
+    "username_input": "Admin",
+    "password_input": "admin1"
+  }
+
+
+
+
+
+]
+
+
+
+
+
+
+}

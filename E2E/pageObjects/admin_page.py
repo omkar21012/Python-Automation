@@ -2,7 +2,10 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.common.by import By
 
-class Admin_Page:
+from E2E.utils.browserutils import BrowserUtils
+
+
+class Admin_Page(BrowserUtils):
 
     def __init__(self, driver):
         self.driver = driver
